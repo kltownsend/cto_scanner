@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: cto_signal_scanner
+Version: 0.1
+Requires-Dist: feedparser==6.0.11
+Requires-Dist: python-dotenv==1.0.1
+Requires-Dist: openai==1.12.0
+Dynamic: requires-dist

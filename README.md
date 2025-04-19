@@ -1,26 +1,58 @@
-# CTO Signal Scanner Agent
+# CTO Signal Scanner
 
-This agent monitors RSS feeds from major technology companies, scores posts using a GPT model or Assistant, and generates tweet drafts based on audience relevance.
+An intelligent RSS feed scanner that monitors major tech companies' blogs, evaluates content relevance for enterprise technology leaders, and provides concise summaries with ratings.
 
 ## Features
 
-- RSS feed polling from AWS, Azure, GCP, etc.
-- GPT-based scoring and tweet generation
-- Customizable GPT model or Assistant ID
-- Delivery via Slack, Notion, or CLI
+- **Automated Feed Monitoring:** Scans RSS feeds from:
+  - AWS
+  - Microsoft Azure
+  - Google Cloud
+  - Cloudflare
+  - Cisco
+  - Red Hat
+- **Smart Content Evaluation:** Uses GPT to analyze and rate content relevance
+- **Date-Based Filtering:** Customizable date range for content scanning
+- **Cache Management:** Prevents duplicate processing within each run
+- **Robust Feed Parsing:** Handles various RSS/Atom formats with fallback mechanisms
 
-## Setup
+## Prerequisites
 
-Create a `.env` file with the following:
+- Python 3.x
+- OpenAI API key
 
-```env
-GPT_MODEL=gpt-4-0125-preview
-ASSISTANT_ID=your-assistant-id-if-any
-OPENAI_API_KEY=your-openai-api-key
-```
+## Installation
 
-## Run
-
+1. Clone the repository:
 ```bash
-python main.py
+git clone https://github.com/kltownsend/cto_scanner.git
+cd cto_scanner
 ```
+
+2. Install required packages:
+```bash
+pip install openai python-dotenv feedparser requests beautifulsoup4 httpx
+```
+
+## Configuration
+
+1. Create a `.env` file in the project root:
+```env
+OPENAI_API_KEY=your-openai-api-key
+GPT_MODEL=gpt-3.5-turbo
+```
+
+## Usage
+
+Run the scanner:
+```bash
+python -m cto_signal_scanner.main
+```
+
+When prompted:
+1. Enter the number of days to look back (1-30)
+2. The scanner will process all articles published within that timeframe
+
+### Output Format
+
+For each article, you'll receive:

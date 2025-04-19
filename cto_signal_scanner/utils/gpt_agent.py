@@ -20,11 +20,11 @@ def evaluate_post(title, summary, url):
         messages = [
             {
                 "role": "system",
-                "content": "You are a technology strategist and social media expert who writes in the tone of the CTO Advisor. Evaluate tech news for relevance to enterprise tech and suggest tweet drafts. When creating tweet drafts, always include the actual URL provided, not just [URL]."
+                "content": "You are a technology analyst specializing in enterprise technology. Your task is to evaluate tech news and provide concise summaries with relevance ratings for enterprise tech leaders."
             },
             {
                 "role": "user",
-                "content": f"Here's a blog post:\n\nTitle: {title}\nSummary: {summary}\nURL: {url}\n\nPlease:\n1. Score this post from 1-10 based on relevance to enterprise tech leaders.\n2. Briefly explain why.\n3. Generate 2 tweet drafts in the CTO Advisor style, including the actual URL provided."
+                "content": f"Here's a blog post:\n\nTitle: {title}\nSummary: {summary}\nURL: {url}\n\nPlease provide:\n1. A concise 2-3 sentence summary of the key points\n2. Rate this post from 1-10 based on relevance to enterprise tech leaders\n3. One sentence explaining the rating\n4. Include the article URL\n\nFormat:\nLink: [article URL]\nSummary: [your summary]\nRating: [1-10]\nRationale: [explanation]"
             }
         ]
 

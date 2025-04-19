@@ -2,6 +2,9 @@ import os
 import ssl
 import logging
 import feedparser
+from datetime import datetime, timedelta
+import json
+from pathlib import Path
 from cto_signal_scanner.utils.gpt_agent import evaluate_post
 from cto_signal_scanner.utils.feed_sources import FEEDS
 from dotenv import load_dotenv
@@ -15,6 +18,33 @@ logger = logging.getLogger(__name__)
 
 print("\n=== Starting CTO Signal Scanner ===")
 load_dotenv()
+
+# Cache setup
+CACHE_FILE = Path("processed_entries.json")
+
+def clear_cache():
+    """Clear the cache file."""
+    if CACHE_FILE.exists():
+        CACHE_FILE.unlink()  # Delete the file
+    return {}
+
+def load_cache():
+    if CACHE_FILE.exists():
+        with open(CACHE_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_cache(cache):
+    with open(CACHE_FILE, 'w') as f:
+        json.dump(cache, f)
+
+def parse_date(entry):
+    """Parse date from feed entry."""
+    date_fields = ['published_parsed', 'updated_parsed', 'created_parsed']
+    for field in date_fields:
+        if hasattr(entry, field) and getattr(entry, field):
+            return datetime(*getattr(entry, field)[:6])
+    return None
 
 def fetch_and_validate_feed(url):
     """Fetch and validate feed content with better error handling."""
@@ -61,15 +91,48 @@ def fetch_and_validate_feed(url):
         return None
 
 def fetch_and_process_feeds():
+    # Get user input for days to look back
+    while True:
+        try:
+            days_back = int(input("Enter number of days to look back (1-30): "))
+            if 1 <= days_back <= 30:
+                break
+            print("Please enter a number between 1 and 30.")
+        except ValueError:
+            print("Please enter a valid number.")
+    
+    cutoff_date = datetime.now() - timedelta(days=days_back)
+    print(f"\nLooking for posts since: {cutoff_date.strftime('%Y-%m-%d')}")
+    
+    # Clear and initialize new cache
+    processed_cache = clear_cache()
+    
     logger.debug("Starting feed processing")
     try:
         for url in FEEDS:
             logger.debug(f"Processing feed: {url}")
             try:
                 feed = fetch_and_validate_feed(url)
+                if not feed:
+                    continue
+                    
                 logger.debug(f"Feed parsed, found {len(feed.entries)} entries")
                 
-                for entry in feed.entries[:5]:
+                for entry in feed.entries:
+                    entry_date = parse_date(entry)
+                    if not entry_date:
+                        logger.warning(f"Could not parse date for entry: {entry.title}")
+                        continue
+                        
+                    # Skip if entry is too old
+                    if entry_date < cutoff_date:
+                        continue
+                        
+                    # Skip if already processed
+                    entry_id = entry.get('id', entry.link)
+                    if entry_id in processed_cache:
+                        continue
+                    
                     logger.debug(f"Processing entry: {entry.title}")
                     try:
                         result = evaluate_post(entry.title, entry.summary, entry.link)
@@ -77,12 +140,22 @@ def fetch_and_process_feeds():
                         print("=" * 50)
                         print(result)
                         print("=" * 50)
+                        
+                        # Add to processed cache
+                        processed_cache[entry_id] = {
+                            'title': entry.title,
+                            'date': entry_date.isoformat(),
+                            'processed_at': datetime.now().isoformat()
+                        }
                     except Exception as e:
                         logger.error(f"Error evaluating post: {str(e)}", exc_info=True)
             except Exception as e:
                 logger.error(f"Error processing feed {url}: {str(e)}", exc_info=True)
     except Exception as e:
         logger.error(f"Main process error: {str(e)}", exc_info=True)
+    finally:
+        # Save cache
+        save_cache(processed_cache)
 
 if __name__ == "__main__":
     fetch_and_process_feeds()

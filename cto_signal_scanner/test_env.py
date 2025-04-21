@@ -5,6 +5,7 @@ import feedparser
 from pathlib import Path
 from dotenv import load_dotenv
 from cto_signal_scanner.utils.feed_sources import FEEDS
+from cto_signal_scanner.utils.pdf_generator import ReportGenerator
 from openai import OpenAI
 import httpx
 
@@ -86,9 +87,60 @@ def test_feed_sources():
     
     return all_successful
 
+def test_pdf_generation():
+    """Test PDF report generation"""
+    print("\n4. Testing PDF Generation...")
+    try:
+        # Create a test report
+        pdf_gen = ReportGenerator()
+        
+        # Test directory creation
+        if pdf_gen.reports_dir.exists():
+            print("✓ Reports directory created successfully")
+        else:
+            print("✗ Failed to create reports directory")
+            return False
+            
+        # Test monthly directory creation
+        if pdf_gen.current_month_dir.exists():
+            print("✓ Monthly directory created successfully")
+        else:
+            print("✗ Failed to create monthly directory")
+            return False
+        
+        # Test PDF generation with sample content
+        pdf_gen.add_header(days_back=7)
+        pdf_gen.add_article(
+            title="Test Article",
+            link="https://example.com",
+            summary="This is a test summary",
+            rating="8",
+            rationale="This is a test rationale"
+        )
+        
+        # Generate the PDF
+        pdf_gen.generate()
+        
+        # Verify the PDF was created
+        if Path(pdf_gen.doc.filename).exists():
+            print(f"✓ PDF generated successfully at: {pdf_gen.doc.filename}")
+            
+            # Clean up test PDF
+            Path(pdf_gen.doc.filename).unlink()
+            print("✓ Test cleanup successful")
+        else:
+            print("✗ Failed to generate PDF")
+            return False
+            
+        return True
+        
+    except Exception as e:
+        print(f"✗ PDF generation test failed: {str(e)}")
+        return False
+
 def test_cache_directory():
     """Test cache file creation and permissions"""
-    print("\n4. Testing Cache Management...")
+    print("\n5. Testing Cache Management...")
     try:
         cache_file = Path("processed_entries.json")
         
@@ -114,6 +166,7 @@ def run_all_tests():
         ("Environment Variables", test_env_variables),
         ("OpenAI API Connection", test_openai_connection),
         ("Feed Sources", test_feed_sources),
+        ("PDF Generation", test_pdf_generation),
         ("Cache Management", test_cache_directory)
     ]
     

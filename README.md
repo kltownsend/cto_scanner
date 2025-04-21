@@ -15,6 +15,7 @@ An intelligent RSS feed scanner that monitors major tech companies' blogs, evalu
 - **Date-Based Filtering:** Customizable date range for content scanning
 - **Cache Management:** Prevents duplicate processing within each run
 - **Robust Feed Parsing:** Handles various RSS/Atom formats with fallback mechanisms
+- **PDF Report Generation:** Creates detailed PDF reports of all processed articles
 
 ## Prerequisites
 
@@ -31,7 +32,12 @@ cd cto_scanner
 
 2. Install required packages:
 ```bash
-pip install openai python-dotenv feedparser requests beautifulsoup4 httpx
+pip install -r requirements.txt
+```
+
+For development:
+```bash
+pip install -r requirements-dev.txt
 ```
 
 ## Configuration
@@ -56,3 +62,23 @@ When prompted:
 ### Output Format
 
 For each article, you'll receive:
+
+- **Title:** The original article title
+- **Link:** Direct URL to the article
+- **Summary:** A concise summary of the article's content
+- **Rating:** Relevance rating for CTOs and technology leaders
+- **Rationale:** Explanation of the rating and key points
+
+The results are:
+1. Displayed in the console in real-time
+2. Saved to a PDF report in the `reports/` directory
+3. Cached to prevent duplicate processing in future runs
+
+### Cache Management
+
+The scanner maintains a cache of processed entries in `processed_entries.json`. This ensures:
+- No duplicate processing of articles
+- Efficient subsequent runs
+- Tracking of processed content
+
+To clear the cache and reprocess all articles, simply delete the `processed_entries.json` file.

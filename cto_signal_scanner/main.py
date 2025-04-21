@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from cto_signal_scanner.utils.gpt_agent import evaluate_post
 from cto_signal_scanner.utils.feed_sources import FEEDS
+from cto_signal_scanner.utils.pdf_generator import ReportGenerator
 from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
@@ -104,6 +105,10 @@ def fetch_and_process_feeds():
     cutoff_date = datetime.now() - timedelta(days=days_back)
     print(f"\nLooking for posts since: {cutoff_date.strftime('%Y-%m-%d')}")
     
+    # Initialize PDF generator
+    pdf_gen = ReportGenerator()
+    pdf_gen.add_header(days_back)
+    
     # Clear and initialize new cache
     processed_cache = clear_cache()
     
@@ -136,6 +141,32 @@ def fetch_and_process_feeds():
                     logger.debug(f"Processing entry: {entry.title}")
                     try:
                         result = evaluate_post(entry.title, entry.summary, entry.link)
+                        
+                        # Parse the GPT response
+                        lines = result.strip().split('\n')
+                        link = entry.link
+                        summary = ""
+                        rating = ""
+                        rationale = ""
+                        
+                        for line in lines:
+                            if line.startswith('Summary:'):
+                                summary = line.replace('Summary:', '').strip()
+                            elif line.startswith('Rating:'):
+                                rating = line.replace('Rating:', '').strip()
+                            elif line.startswith('Rationale:'):
+                                rationale = line.replace('Rationale:', '').strip()
+                        
+                        # Add to PDF
+                        pdf_gen.add_article(
+                            title=entry.title,
+                            link=link,
+                            summary=summary,
+                            rating=rating,
+                            rationale=rationale
+                        )
+                        
+                        # Console output for monitoring
                         print("\nEvaluation Result:")
                         print("=" * 50)
                         print(result)
@@ -154,6 +185,8 @@ def fetch_and_process_feeds():
     except Exception as e:
         logger.error(f"Main process error: {str(e)}", exc_info=True)
     finally:
+        # Generate PDF
+        pdf_gen.generate()
         # Save cache
         save_cache(processed_cache)
 

@@ -95,23 +95,77 @@ class ReportGenerator:
         self.story.append(Paragraph(generated, self.styles['Normal']))
         self.story.append(Spacer(1, 20))
 
-    def add_article(self, title, link, summary, rating, rationale):
-        """Add an article to the report."""
+    def add_article(self, article_data):
+        """Add an article to the report.
+        
+        Args:
+            article_data: Dictionary containing article data with keys:
+                - title: Article title
+                - link: Article URL
+                - summary: Article summary
+                - rating: Article rating
+                - rationale: Article rationale
+        """
         # Add title with link
-        self.story.append(Paragraph(f"<a href='{link}'>{title}</a>", self.styles['Link']))
+        title_text = f'<link href="{article_data["link"]}">{article_data["title"]}</link>'
+        self.story.append(Paragraph(title_text, self.styles['Link']))
+        self.story.append(Spacer(1, 10))
+        
+        # Add rating
+        rating_text = f'Rating: {article_data["rating"]}'
+        self.story.append(Paragraph(rating_text, self.styles['Rating']))
         self.story.append(Spacer(1, 10))
         
         # Add summary
-        self.story.append(Paragraph(f"Summary: {summary}", self.styles['Normal']))
+        self.story.append(Paragraph("Summary:", self.styles['Heading3']))
+        self.story.append(Paragraph(article_data["summary"], self.styles['Normal']))
         self.story.append(Spacer(1, 10))
         
-        # Add rating and rationale
-        self.story.append(Paragraph(f"Rating: {rating}/10", self.styles['Rating']))
-        self.story.append(Paragraph(f"Rationale: {rationale}", self.styles['Normal']))
+        # Add rationale
+        self.story.append(Paragraph("Rationale:", self.styles['Heading3']))
+        self.story.append(Paragraph(article_data["rationale"], self.styles['Normal']))
         self.story.append(Spacer(1, 20))
 
     def generate(self):
         """Generate the PDF report."""
-        self.doc.build(self.story)
-        print(f"\nReport generated: {self.doc.filename}")
-        print(f"Reports directory: {self.reports_dir.absolute()}") 
+        try:
+            # Add a message if no articles were processed
+            if not self.story:
+                self.story.append(Paragraph("No articles were processed in this scan.", self.styles['Normal']))
+                self.story.append(Spacer(1, 20))
+                self.story.append(Paragraph("This could be due to:", self.styles['Normal']))
+                self.story.append(Paragraph("1. No new articles found in the specified time range", self.styles['Normal']))
+                self.story.append(Paragraph("2. Issues with feed sources", self.styles['Normal']))
+                self.story.append(Paragraph("3. API authentication errors", self.styles['Normal']))
+            
+            # Build the PDF
+            self.doc.build(self.story)
+            
+            # Return the path to the generated PDF
+            return Path(self.doc.filename)
+            
+        except Exception as e:
+            # Log the error
+            import logging
+            logging.error(f"Error generating PDF: {str(e)}")
+            
+            # Create a basic error report
+            error_path = self.current_month_dir / f"error_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            error_doc = SimpleDocTemplate(
+                str(error_path),
+                pagesize=letter,
+                rightMargin=72,
+                leftMargin=72,
+                topMargin=72,
+                bottomMargin=72
+            )
+            
+            error_story = []
+            error_story.append(Paragraph("Error Generating Report", self.styles['Heading1']))
+            error_story.append(Spacer(1, 20))
+            error_story.append(Paragraph(f"An error occurred while generating the report: {str(e)}", self.styles['Normal']))
+            error_story.append(Spacer(1, 20))
+            error_story.append(Paragraph("Please check the application logs for more details.", self.styles['Normal']))
+            
+            error_doc.build(error_story)
+            return error_path 

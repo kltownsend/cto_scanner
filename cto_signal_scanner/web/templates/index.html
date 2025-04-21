@@ -223,8 +223,12 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
                     },
-                    body: `days_back=${daysBack}`
+                    body: new URLSearchParams({
+                        'days_back': daysBack,
+                        'csrf_token': document.querySelector('input[name="csrf_token"]').value
+                    })
                 });
 
                 clearInterval(progressInterval);
@@ -249,12 +253,14 @@
                 
                 // Store PDF path for download
                 currentPdfPath = data.pdf_path;
-                downloadPdfBtn.disabled = false;
+                downloadPdfBtn.disabled = !currentPdfPath;
                 
                 // Set up download button
                 downloadPdfBtn.onclick = () => {
                     if (currentPdfPath) {
-                        window.location.href = `/download/${currentPdfPath.split('/').pop()}`;
+                        // Encode the path to handle special characters
+                        const encodedPath = encodeURIComponent(currentPdfPath);
+                        window.location.href = `/download/${encodedPath}`;
                     }
                 };
                 

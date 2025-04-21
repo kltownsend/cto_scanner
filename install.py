@@ -55,6 +55,14 @@ def create_env_file():
         with open(env_path, "w") as f:
             f.write("OPENAI_API_KEY=your-api-key-here\n")
             f.write("GPT_MODEL=gpt-3.5-turbo\n")
+            
+            # Set port based on OS
+            if platform.system() == "Darwin":  # macOS
+                f.write("PORT=5001\n")
+                print("Using port 5001 for macOS to avoid AirPlay conflicts")
+            else:
+                f.write("PORT=5000\n")
+                
         print("Please edit .env file and add your OpenAI API key.")
 
 def create_reports_directory():
@@ -89,7 +97,10 @@ def main():
     print(f"1. Activate the virtual environment: {activate_cmd}")
     print("2. Edit the .env file and add your OpenAI API key")
     print("3. Start the application: python run_web.py")
-    print("4. Open your browser and go to: http://localhost:5000")
+    if platform.system() == "Darwin":  # macOS
+        print("4. Open your browser and go to: http://localhost:5001")
+    else:
+        print("4. Open your browser and go to: http://localhost:5000")
     print("\nFor more detailed instructions, please refer to the README.md file.")
 
 if __name__ == "__main__":

@@ -61,6 +61,15 @@ if [ ! -f .env ]; then
     print_message "Creating .env file..."
     echo "OPENAI_API_KEY=your-api-key-here" > .env
     echo "GPT_MODEL=gpt-3.5-turbo" >> .env
+    
+    # Set port based on OS
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "PORT=5001" >> .env
+        print_message "Using port 5001 for macOS to avoid AirPlay conflicts"
+    else
+        echo "PORT=5000" >> .env
+    fi
+    
     print_message "Please edit .env file and add your OpenAI API key"
 fi
 
@@ -70,6 +79,10 @@ echo "To start using the application:"
 echo "1. Activate the virtual environment: source venv/bin/activate"
 echo "2. Edit the .env file and add your OpenAI API key"
 echo "3. Start the application: python run_web.py"
-echo "4. Open your browser and go to: http://localhost:5000"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "4. Open your browser and go to: http://localhost:5001"
+else
+    echo "4. Open your browser and go to: http://localhost:5000"
+fi
 echo ""
 echo "For more detailed instructions, please refer to the README.md file." 

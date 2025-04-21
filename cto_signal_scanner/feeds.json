@@ -1,0 +1,46 @@
+{
+  "feeds": [
+    {
+      "id": "36c6020f-db33-47bc-a643-c1566cf3e530",
+      "url": "https://aws.amazon.com/blogs/aws/feed/",
+      "name": "AWS",
+      "added_at": "2025-04-21T10:03:19.862139",
+      "status": "unknown"
+    },
+    {
+      "id": "c8f62bb0-3062-43ff-b967-d95ada5d0f2d",
+      "url": "https://azure.microsoft.com/en-us/blog/feed/",
+      "name": "AZURE",
+      "added_at": "2025-04-21T10:03:19.862151",
+      "status": "unknown"
+    },
+    {
+      "id": "ee849859-ddce-44b6-8be8-2e54d4490c86",
+      "url": "https://cloudblog.withgoogle.com/rss/",
+      "name": "GCP",
+      "added_at": "2025-04-21T10:03:19.862155",
+      "status": "unknown"
+    },
+    {
+      "id": "a7824bdc-bd35-48fc-9560-e9522cd770e7",
+      "url": "https://blog.cloudflare.com/rss/",
+      "name": "CLOUDFLARE",
+      "added_at": "2025-04-21T10:03:19.862159",
+      "status": "unknown"
+    },
+    {
+      "id": "346c96ac-6ae9-4aa7-9c1a-53c04fa4d156",
+      "url": "https://blogs.cisco.com/feed",
+      "name": "CISCO",
+      "added_at": "2025-04-21T10:03:19.862162",
+      "status": "unknown"
+    },
+    {
+      "id": "fd75dbc9-6b1c-4053-8ecb-1a4d3c7cc780",
+      "url": "https://www.redhat.com/en/feed",
+      "name": "REDHAT",
+      "added_at": "2025-04-21T10:03:19.862165",
+      "status": "unknown"
+    }
+  ]
+}

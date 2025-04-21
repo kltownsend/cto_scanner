@@ -6,8 +6,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 from cto_signal_scanner.utils.feed_sources import FEEDS
 from cto_signal_scanner.utils.pdf_generator import ReportGenerator
+from cto_signal_scanner.utils.feed_manager import FeedManager
 from openai import OpenAI
 import httpx
+import json
+
+# Determine base directory
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 def test_env_variables():
     """Test environment variables configuration"""
@@ -142,7 +147,7 @@ def test_cache_directory():
     """Test cache file creation and permissions"""
     print("\n5. Testing Cache Management...")
     try:
-        cache_file = Path("processed_entries.json")
+        cache_file = BASE_DIR / "processed_entries.json"
         
         # Test file creation
         with open(cache_file, 'w') as f:
@@ -158,6 +163,62 @@ def test_cache_directory():
         print(f"✗ Cache file operation failed: {str(e)}")
         return False
 
+def test_feed_manager():
+    """Test feed manager functionality"""
+    print("\n6. Testing Feed Manager...")
+    try:
+        # Initialize feed manager
+        feed_manager = FeedManager()
+        
+        # Test feed validation
+        for url in FEEDS[:1]:  # Test just the first feed
+            is_valid, error_msg = feed_manager.validate_feed(url)
+            if is_valid:
+                print(f"✓ Feed validation successful for {url}")
+            else:
+                print(f"✗ Feed validation failed for {url}: {error_msg}")
+                return False
+        
+        # Test getting enabled feeds
+        enabled_feeds = feed_manager.get_enabled_feeds()
+        if enabled_feeds:
+            print(f"✓ Successfully retrieved {len(enabled_feeds)} enabled feeds")
+        else:
+            print("✗ No enabled feeds found")
+            return False
+        
+        return True
+    except Exception as e:
+        print(f"✗ Feed manager test failed: {str(e)}")
+        return False
+
+def test_settings_management():
+    """Test settings management functionality"""
+    print("\n7. Testing Settings Management...")
+    try:
+        # Create a test settings file
+        settings_file = BASE_DIR / "settings.json"
+        test_settings = {
+            "openai_key": os.getenv("OPENAI_API_KEY", ""),
+            "gpt_model": os.getenv("GPT_MODEL", "gpt-3.5-turbo"),
+            "enabled_feeds": FEEDS[:2]  # Enable first two feeds
+        }
+        
+        # Write test settings
+        with open(settings_file, 'w') as f:
+            json.dump(test_settings, f)
+        
+        print("✓ Successfully created test settings file")
+        
+        # Clean up
+        settings_file.unlink()
+        print("✓ Successfully deleted test settings file")
+        
+        return True
+    except Exception as e:
+        print(f"✗ Settings management test failed: {str(e)}")
+        return False
+
 def run_all_tests():
     """Run all tests and return overall status"""
     print("=== CTO Signal Scanner Tests ===")
@@ -167,7 +228,9 @@ def run_all_tests():
         ("OpenAI API Connection", test_openai_connection),
         ("Feed Sources", test_feed_sources),
         ("PDF Generation", test_pdf_generation),
-        ("Cache Management", test_cache_directory)
+        ("Cache Management", test_cache_directory),
+        ("Feed Manager", test_feed_manager),
+        ("Settings Management", test_settings_management)
     ]
     
     results = []

@@ -5,7 +5,7 @@ import feedparser
 from datetime import datetime, timedelta
 import json
 from pathlib import Path
-from cto_signal_scanner.utils.gpt_agent import evaluate_post
+from cto_signal_scanner.utils.gpt_agent import GPTAgent
 from cto_signal_scanner.utils.feed_sources import FEEDS
 from cto_signal_scanner.utils.pdf_generator import ReportGenerator
 from dotenv import load_dotenv
@@ -20,8 +20,11 @@ logger = logging.getLogger(__name__)
 print("\n=== Starting CTO Signal Scanner ===")
 load_dotenv()
 
+# Determine base directory
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 # Cache setup
-CACHE_FILE = Path("processed_entries.json")
+CACHE_FILE = BASE_DIR / "processed_entries.json"
 
 def clear_cache():
     """Clear the cache file."""
@@ -105,8 +108,9 @@ def fetch_and_process_feeds():
     cutoff_date = datetime.now() - timedelta(days=days_back)
     print(f"\nLooking for posts since: {cutoff_date.strftime('%Y-%m-%d')}")
     
-    # Initialize PDF generator
+    # Initialize PDF generator and GPT agent
     pdf_gen = ReportGenerator()
+    gpt_agent = GPTAgent()
     pdf_gen.add_header(days_back)
     
     # Clear and initialize new cache
@@ -140,7 +144,7 @@ def fetch_and_process_feeds():
                     
                     logger.debug(f"Processing entry: {entry.title}")
                     try:
-                        result = evaluate_post(entry.title, entry.summary, entry.link)
+                        result = gpt_agent.evaluate_post(entry.title, entry.summary, entry.link)
                         
                         # Parse the GPT response
                         lines = result.strip().split('\n')

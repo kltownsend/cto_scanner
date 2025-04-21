@@ -6,6 +6,7 @@ from reportlab.lib.units import inch
 from datetime import datetime, timedelta
 from pathlib import Path
 import shutil
+import os
 
 class ReportGenerator:
     def __init__(self, output_path=None, max_reports=30):
@@ -16,8 +17,11 @@ class ReportGenerator:
             output_path: Optional custom path for the PDF
             max_reports: Maximum number of reports to keep (default 30)
         """
+        # Determine base directory
+        self.base_dir = Path(__file__).resolve().parent.parent.parent
+        
         # Create reports directory structure
-        self.reports_dir = Path('reports')
+        self.reports_dir = self.base_dir / 'reports'
         self.reports_dir.mkdir(exist_ok=True)
         
         # Create dated subdirectory

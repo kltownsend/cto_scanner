@@ -1,174 +1,146 @@
 # CTO Signal Scanner
 
-An intelligent RSS feed scanner that monitors major tech companies' blogs, evaluates content relevance for enterprise technology leaders, and provides concise summaries with ratings.
+A web application for scanning and analyzing CTO signals using AI-powered analysis.
 
 ## Features
 
-- **Automated Feed Monitoring:** Scans RSS feeds from:
-  - AWS
-  - Microsoft Azure
-  - Google Cloud
-  - Cloudflare
-  - Cisco
-  - Red Hat
-- **Smart Content Evaluation:** Uses GPT to analyze and rate content relevance
-- **Date-Based Filtering:** Customizable date range for content scanning
-- **Cache Management:** Prevents duplicate processing within each run
-- **Robust Feed Parsing:** Handles various RSS/Atom formats with fallback mechanisms
-- **PDF Report Generation:** Creates detailed PDF reports of all processed articles
-- **Web Interface:** User-friendly web UI for scanning and viewing results
+- Web-based interface for easy access
+- AI-powered signal analysis
+- Report generation
+- Cross-platform compatibility (Windows, macOS, Linux)
 
-## Installation Guide
-
-### Prerequisites
+## Prerequisites
 
 - Python 3.8 or higher
-- OpenAI API key (get one from [OpenAI's website](https://platform.openai.com/api-keys))
+- OpenAI API key
 
-### Step-by-Step Installation
+## Installation
 
-1. **Install Python**
-   - Download and install Python from [python.org](https://www.python.org/downloads/)
-   - During installation, make sure to check "Add Python to PATH"
-   - Verify installation by opening a terminal/command prompt and typing:
-     ```bash
-     python --version
+### Automatic Installation
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/yourusername/cto-scanner.git
+   cd cto-scanner
+   ```
+
+2. Run the installation script:
+   - On macOS/Linux:
+     ```
+     chmod +x install.sh
+     ./install.sh
+     ```
+   - On Windows:
+     ```
+     python install.py
      ```
 
-2. **Download the Application**
-   - Download the latest release from GitHub
-   - Or clone the repository:
-     ```bash
-     git clone https://github.com/kltownsend/cto_scanner.git
-     cd cto_scanner
-     ```
+   The installation script will:
+   - Check your Python version
+   - Create a virtual environment
+   - Install all required dependencies
+   - Set up configuration files
+   - Create necessary directories
 
-3. **Set Up Virtual Environment** (recommended)
-   - Windows:
-     ```bash
-     python -m venv venv
-     venv\Scripts\activate
+### Manual Installation
+
+1. Create a virtual environment:
+   ```
+   python -m venv venv
+   ```
+
+2. Activate the virtual environment:
+   - On macOS/Linux:
      ```
-   - macOS/Linux:
-     ```bash
-     python3 -m venv venv
      source venv/bin/activate
      ```
-
-4. **Install Dependencies**
-   - Run the following command:
-     ```bash
-     pip install -r requirements.txt
+   - On Windows:
+     ```
+     venv\Scripts\activate
      ```
 
-5. **Configure the Application**
-   - Create a `.env` file in the project root
-   - Add your OpenAI API key:
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+4. Create a `.env` file with your OpenAI API key:
+   ```
+   OPENAI_API_KEY=your-api-key-here
+   GPT_MODEL=gpt-3.5-turbo
+   PORT=5000  # Use 5001 on macOS to avoid AirPlay conflicts
+   ```
+
+## Usage
+
+1. Activate the virtual environment:
+   - On macOS/Linux:
      ```
-     OPENAI_API_KEY=your-api-key-here
-     GPT_MODEL=gpt-3.5-turbo
+     source venv/bin/activate
+     ```
+   - On Windows:
+     ```
+     venv\Scripts\activate
      ```
 
-6. **Start the Application**
-   - Run the web interface:
-     ```bash
-     python run_web.py
-     ```
-   - Open your browser and go to: http://localhost:5000
+2. Start the application:
+   ```
+   python run_web.py
+   ```
 
-### Troubleshooting
+3. Open your browser and navigate to:
+   - http://localhost:5000 (Windows/Linux)
+   - http://localhost:5001 (macOS)
 
-#### Common Issues
-
-1. **"Python not found" error**
-   - Make sure Python is installed and added to PATH
-   - Try using `python3` instead of `python`
-
-2. **"Module not found" errors**
-   - Make sure you're in the virtual environment (you should see `(venv)` in your terminal)
-   - Try reinstalling dependencies: `pip install -r requirements.txt`
-
-3. **Port 5000 already in use**
-   - On macOS, port 5000 might be used by AirPlay
-   - Change the port in `run_web.py` to 5001 or another available port
-
-4. **OpenAI API errors**
-   - Verify your API key is correct in the `.env` file
-   - Check your OpenAI account for any usage limits or issues
-
-#### Getting Help
-
-- Check the [Issues](https://github.com/kltownsend/cto_scanner/issues) page
-- Create a new issue if you encounter a problem
-- Join our [Discord community](link-to-discord) for real-time support
-
-## Usage Guide
-
-### Web Interface
-
-1. **First Time Setup**
-   - Open http://localhost:5000 in your browser
-   - Click the settings icon (⚙️) in the top right
-   - Enter your OpenAI API key
-   - Select your preferred GPT model
-   - Save settings
-
-2. **Running a Scan**
-   - Enter the number of days to look back (1-30)
-   - Click "Start Scan"
-   - Wait for the scan to complete
-   - View and filter results
-   - Download PDF report if desired
-
-3. **Managing Feeds**
-   - Go to Settings
-   - Add or remove RSS feeds
-   - Test feed URLs before adding
-   - Enable/disable specific feeds
-
-### Command Line Usage
-
-For advanced users, you can also use the command-line interface:
-
-```bash
-python -m cto_signal_scanner.main
-```
-
-## Development
-
-### Setting Up Development Environment
-
-```bash
-pip install -r requirements-dev.txt
-```
-
-### Running Tests
-
-```bash
-python -m test_env
-```
-
-### Project Structure
+## Project Structure
 
 ```
-cto_signal_scanner/
-├── main.py                 # Command-line entry point
-├── utils/
-│   ├── gpt_agent.py        # GPT integration
-│   ├── feed_sources.py     # RSS feed definitions
-│   ├── pdf_generator.py    # PDF report generation
-│   └── feed_manager.py     # Feed management
-├── web/
-│   ├── app.py              # Flask web application
-│   ├── static/             # Static files
-│   └── templates/          # HTML templates
-└── reports/                # Generated PDF reports
+cto_scanner/
+├── cto_signal_scanner/     # Main package
+│   ├── web/                # Web application
+│   ├── analysis/           # Signal analysis modules
+│   └── utils/              # Utility functions
+├── reports/                # Generated reports
+├── venv/                   # Virtual environment
+├── .env                    # Environment variables
+├── install.py              # Windows installation script
+├── install.sh              # Unix installation script
+├── requirements.txt        # Python dependencies
+└── run_web.py             # Application entry point
 ```
 
-## Contributing
+## Configuration
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+The application can be configured through the `.env` file:
+
+- `OPENAI_API_KEY`: Your OpenAI API key
+- `GPT_MODEL`: The GPT model to use (default: gpt-3.5-turbo)
+- `PORT`: The port to run the web server on (default: 5000, use 5001 on macOS)
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Python version error**: Ensure you have Python 3.8 or higher installed.
+2. **Virtual environment creation fails**: Install python3-venv:
+   - On macOS: `brew install python@3.12`
+   - On Ubuntu/Debian: `sudo apt-get install python3-venv`
+3. **Port conflicts**: If port 5000 is already in use, change the PORT in the .env file.
+4. **Corrupted virtual environment**: If you see an error about the Python executable not being found in the virtual environment, the installation script will automatically remove the corrupted environment and create a new one. If it fails to do so, you can manually delete the 'venv' directory and run the installation script again.
+
+### Installation Issues
+
+If you encounter issues during installation:
+
+1. **Check Python version**: Make sure you have Python 3.8 or higher installed.
+2. **Verify python3-venv**: Ensure the python3-venv package is installed on your system.
+3. **Clean installation**: If you're having persistent issues, try removing the 'venv' directory and the '.env' file, then run the installation script again.
+4. **Manual installation**: If the automatic installation fails, follow the manual installation steps.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+[MIT License](LICENSE)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

@@ -28,17 +28,29 @@ fi
 
 print_message "Starting installation..."
 
-# Create virtual environment
-print_message "Creating virtual environment..."
-python3 -m venv venv
+# Create virtual environment if it doesn't exist
+if [ ! -d "venv" ]; then
+    print_message "Creating virtual environment..."
+    python3 -m venv venv
+    if [ $? -ne 0 ]; then
+        print_error "Failed to create virtual environment. Please ensure python3-venv is installed."
+        print_message "On macOS, you can install it with: brew install python@3.12"
+        print_message "On Ubuntu/Debian: sudo apt-get install python3-venv"
+        exit 1
+    fi
+fi
 
 # Activate virtual environment
 print_message "Activating virtual environment..."
 source venv/bin/activate
 
+# Upgrade pip in the virtual environment
+print_message "Upgrading pip..."
+python -m pip install --upgrade pip
+
 # Install dependencies
 print_message "Installing dependencies..."
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 
 # Create necessary directories
 print_message "Creating necessary directories..."

@@ -17,7 +17,16 @@ def create_virtual_environment():
     venv_path = Path("venv")
     if not venv_path.exists():
         print("Creating virtual environment...")
-        venv.create(venv_path, with_pip=True)
+        try:
+            venv.create(venv_path, with_pip=True)
+        except Exception as e:
+            print(f"Error: Failed to create virtual environment: {e}")
+            print("\nPlease ensure python3-venv is installed:")
+            if platform.system() == "Darwin":  # macOS
+                print("On macOS: brew install python@3.12")
+            elif platform.system() == "Linux":
+                print("On Ubuntu/Debian: sudo apt-get install python3-venv")
+            sys.exit(1)
     return venv_path
 
 def get_activate_script():
@@ -29,7 +38,14 @@ def get_activate_script():
 def install_dependencies():
     """Install required packages."""
     print("Installing dependencies...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+    try:
+        # Upgrade pip first
+        subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], check=True)
+        # Install requirements
+        subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: Failed to install dependencies: {e}")
+        sys.exit(1)
 
 def create_env_file():
     """Create .env file if it doesn't exist."""

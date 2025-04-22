@@ -12,11 +12,20 @@ An intelligent RSS feed scanner that monitors major tech companies' blogs, evalu
   - Cisco
   - Red Hat
 - **Smart Content Evaluation:** Uses GPT to analyze and rate content relevance
-- **Date-Based Filtering:** Customizable date range for content scanning
+- **Date-Based Filtering:** Customizable date range for content scanning (1-30 days)
 - **Cache Management:** Prevents duplicate processing within each run
 - **Robust Feed Parsing:** Handles various RSS/Atom formats with fallback mechanisms
 - **PDF Report Generation:** Creates detailed PDF reports of all processed articles
 - **Web Interface:** User-friendly web UI for scanning and viewing results
+- **Dark Mode Support:** Toggle between light and dark themes
+- **Mobile Responsive:** Works well on all device sizes
+- **Enhanced Security:** CSRF protection and secure session management
+- **Results Management:** Filter and sort articles by rating and date
+- **Settings Management:** Configure API keys and feed sources through web interface
+- **GPT Response Caching:** Improves performance and handles rate limits
+- **Real-time Progress Updates:** Shows article processing progress during scans
+- **Detailed Error Handling:** Clear error messages and proper error recovery
+- **Configurable Port:** Set through environment variables (default: 5001)
 
 ## Installation Guide
 
@@ -25,17 +34,19 @@ An intelligent RSS feed scanner that monitors major tech companies' blogs, evalu
 - Python 3.8 or higher
 - OpenAI API key (get one from [OpenAI's website](https://platform.openai.com/api-keys))
 
-### Step-by-Step Installation
+### Quick Installation
 
-1. **Install Python**
-   - Download and install Python from [python.org](https://www.python.org/downloads/)
-   - During installation, make sure to check "Add Python to PATH"
-   - Verify installation by opening a terminal/command prompt and typing:
+1. **Install Python Development Tools**
+   - On macOS:
      ```bash
-     python --version
+     brew install python@3.12
+     ```
+   - On Ubuntu/Debian:
+     ```bash
+     sudo apt-get install python3-venv
      ```
 
-2. **Download the Application**
+2. **Download and Install**
    - Download the latest release from GitHub
    - Or clone the repository:
      ```bash
@@ -43,7 +54,27 @@ An intelligent RSS feed scanner that monitors major tech companies' blogs, evalu
      cd cto_scanner
      ```
 
-3. **Set Up Virtual Environment** (recommended)
+3. **Run Installation Script**
+   - On macOS/Linux:
+     ```bash
+     ./install.sh
+     ```
+   - On Windows:
+     ```bash
+     python install.py
+     ```
+
+   The installation script will:
+   - Create a virtual environment
+   - Install dependencies
+   - Set up configuration files
+   - Configure the appropriate port (5001 for macOS, 5000 for others)
+
+### Manual Installation
+
+If you prefer to install manually:
+
+1. **Set Up Virtual Environment**
    - Windows:
      ```bash
      python -m venv venv
@@ -55,120 +86,60 @@ An intelligent RSS feed scanner that monitors major tech companies' blogs, evalu
      source venv/bin/activate
      ```
 
-4. **Install Dependencies**
-   - Run the following command:
-     ```bash
-     pip install -r requirements.txt
-     ```
+2. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-5. **Configure the Application**
+3. **Configure the Application**
    - Create a `.env` file in the project root
-   - Add your OpenAI API key:
+   - Add your configuration:
      ```
      OPENAI_API_KEY=your-api-key-here
-     GPT_MODEL=gpt-3.5-turbo
+     GPT_MODEL=gpt-4.1  # Default model, can be changed to gpt-3.5-turbo or gpt-4
+     PORT=5001  # Default port, change if needed
+     FLASK_SECRET_KEY=your-secret-key-here  # Optional, will be auto-generated if not provided
      ```
 
-6. **Start the Application**
-   - Run the web interface:
-     ```bash
-     python run_web.py
-     ```
-   - Open your browser and go to: http://localhost:5000
+4. **Run the Application**
+   ```bash
+   python -m cto_signal_scanner.run_web
+   ```
 
-### Troubleshooting
+   The application will be available at `http://localhost:5001` by default.
 
-#### Common Issues
+## Usage
 
-1. **"Python not found" error**
-   - Make sure Python is installed and added to PATH
-   - Try using `python3` instead of `python`
-
-2. **"Module not found" errors**
-   - Make sure you're in the virtual environment (you should see `(venv)` in your terminal)
-   - Try reinstalling dependencies: `pip install -r requirements.txt`
-
-3. **Port 5000 already in use**
-   - On macOS, port 5000 might be used by AirPlay
-   - Change the port in `run_web.py` to 5001 or another available port
-
-4. **OpenAI API errors**
-   - Verify your API key is correct in the `.env` file
-   - Check your OpenAI account for any usage limits or issues
-
-#### Getting Help
-
-- Check the [Issues](https://github.com/kltownsend/cto_scanner/issues) page
-- Create a new issue if you encounter a problem
-- Join our [Discord community](link-to-discord) for real-time support
-
-## Usage Guide
-
-### Web Interface
-
-1. **First Time Setup**
-   - Open http://localhost:5000 in your browser
-   - Click the settings icon (⚙️) in the top right
-   - Enter your OpenAI API key
-   - Select your preferred GPT model
-   - Save settings
-
-2. **Running a Scan**
+1. **Start a Scan**
+   - Open the web interface
    - Enter the number of days to look back (1-30)
    - Click "Start Scan"
-   - Wait for the scan to complete
-   - View and filter results
-   - Download PDF report if desired
+   - Monitor progress in real-time
+   - View results when complete
 
-3. **Managing Feeds**
-   - Go to Settings
-   - Add or remove RSS feeds
-   - Test feed URLs before adding
-   - Enable/disable specific feeds
+2. **View and Filter Results**
+   - Filter articles by rating (High/Medium/Low)
+   - Sort by date or rating
+   - Download PDF report
+   - View article details and links
 
-### Command Line Usage
+3. **Configure Settings**
+   - Access settings through the gear icon
+   - Update API keys
+   - Manage feed sources
+   - Configure GPT model and prompts
 
-For advanced users, you can also use the command-line interface:
+## Troubleshooting
 
-```bash
-python -m cto_signal_scanner.main
-```
-
-## Development
-
-### Setting Up Development Environment
-
-```bash
-pip install -r requirements-dev.txt
-```
-
-### Running Tests
-
-```bash
-python -m test_env
-```
-
-### Project Structure
-
-```
-cto_signal_scanner/
-├── main.py                 # Command-line entry point
-├── utils/
-│   ├── gpt_agent.py        # GPT integration
-│   ├── feed_sources.py     # RSS feed definitions
-│   ├── pdf_generator.py    # PDF report generation
-│   └── feed_manager.py     # Feed management
-├── web/
-│   ├── app.py              # Flask web application
-│   ├── static/             # Static files
-│   └── templates/          # HTML templates
-└── reports/                # Generated PDF reports
-```
+- **Port Conflicts:** If port 5001 is in use, change the `PORT` value in your `.env` file
+- **API Key Issues:** Ensure your OpenAI API key is valid and has sufficient credits
+- **Feed Parsing Errors:** Check feed URLs in settings if articles aren't being processed
+- **Session Issues:** Clear browser cookies if experiencing session-related problems
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.

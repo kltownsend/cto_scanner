@@ -6,33 +6,11 @@
 # Python
 __pycache__/
 *.py[cod]
-*.class
-*.so
+*$py.class
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Testing
-.coverage
-.pytest_cache/
-htmlcov/
-
-# Virtual Environment
-venv/
+.env
 .venv/
+venv/
 ENV/
 
 # IDE
@@ -40,6 +18,28 @@ ENV/
 .vscode/
 *.swp
 *.swo
+
+# Project specific
+feeds.json
+custom_feeds.json
+flask_session/
+gpt_cache.json
+processed_entries.json
+settings.json
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+coverage.xml
+*.cover
 
 # OS
 .DS_Store
@@ -49,3 +49,8 @@ ENV/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Project specific
+reports/
+*.pdf
+*.log

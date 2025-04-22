@@ -5,6 +5,12 @@ All notable changes to the CTO Signal Scanner project will be documented in this
 ## [Unreleased]
 
 ### Added
+- Advanced feed management system with separate storage for default and custom feeds
+- Feed validation and health monitoring system
+- Protected default feeds that cannot be removed
+- Custom feed support with separate storage in `custom_feeds.json`
+- Feed health status indicators in the UI
+- Automatic feed validation on addition and during scans
 - Real-time progress updates during scan operations
 - Detailed article count tracking (total and assessed)
 - Improved error handling with specific error messages
@@ -23,6 +29,9 @@ All notable changes to the CTO Signal Scanner project will be documented in this
 - Cache management functions: `load_gpt_cache` and `save_gpt_cache`
 
 ### Changed
+- Restructured feed storage to separate default and custom feeds
+- Enhanced feed validation with comprehensive checks
+- Improved feed management UI with clear status indicators
 - Updated port configuration to use environment variables consistently
 - Improved error handling across all endpoints
 - Enhanced security with proper CSRF token validation
@@ -36,6 +45,9 @@ All notable changes to the CTO Signal Scanner project will be documented in this
 - Improved error message display in the UI
 
 ### Fixed
+- Feed management issues with default feed protection
+- Custom feed persistence across application updates
+- Feed validation error handling and reporting
 - Port configuration inconsistencies
 - Session expiration issues
 - CSRF token validation errors

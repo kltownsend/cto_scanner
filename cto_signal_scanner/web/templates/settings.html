@@ -64,29 +64,52 @@
 
     <div class="container my-5">
         <div class="row justify-content-center">
-            <div class="col-md-8">
+            <div class="col-md-8 col-lg-10">
                 <div class="card shadow-sm">
                     <div class="card-body">
                         <h5 class="card-title mb-4">Settings</h5>
-                        <form id="settingsForm" method="POST" action="/settings">
+                        <form id="settingsForm">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            
                             <div class="mb-4">
                                 <label for="openaiKey" class="form-label">OpenAI API Key</label>
                                 <input type="password" class="form-control" id="openaiKey" name="openai_key" 
-                                       value="{{ openai_key }}" required>
-                                <div class="form-text">Your OpenAI API key for GPT analysis</div>
+                                       value="{{ openai_key }}" autocomplete="off">
+                                <div class="form-text">
+                                    Required for using OpenAI models. Get your API key from 
+                                    <a href="https://platform.openai.com/account/api-keys" target="_blank">OpenAI's website</a>.
+                                </div>
                             </div>
 
                             <div class="mb-4">
                                 <label for="gptModel" class="form-label">GPT Model</label>
                                 <select class="form-select" id="gptModel" name="gpt_model">
-                                    <option value="gpt-3.5-turbo" {% if gpt_model == 'gpt-3.5-turbo' %}selected{% endif %}>
-                                        GPT-3.5 Turbo
-                                    </option>
-                                    <option value="gpt-4" {% if gpt_model == 'gpt-4' %}selected{% endif %}>
-                                        GPT-4
-                                    </option>
+                                    <optgroup label="OpenAI Models">
+                                        <option value="gpt-3.5-turbo" {% if gpt_model == 'gpt-3.5-turbo' %}selected{% endif %}>
+                                            GPT-3.5 Turbo (Fastest, Most Cost-Effective)
+                                        </option>
+                                        <option value="gpt-4" {% if gpt_model == 'gpt-4' %}selected{% endif %}>
+                                            GPT-4 (Better Quality, Higher Cost)
+                                        </option>
+                                        <option value="gpt-4-turbo-preview" {% if gpt_model == 'gpt-4-turbo-preview' %}selected{% endif %}>
+                                            GPT-4 Turbo (Best Quality, Highest Cost)
+                                        </option>
+                                    </optgroup>
+                                    <optgroup label="Local Ollama Models">
+                                        <option value="qwen2:7b" {% if gpt_model == 'qwen2:7b' %}selected{% endif %}>
+                                            Qwen2 7B (Local, Free)
+                                        </option>
+                                        <option value="llama2" {% if gpt_model == 'llama2' %}selected{% endif %}>
+                                            Llama2 (Local, Free)
+                                        </option>
+                                        <option value="mistral" {% if gpt_model == 'mistral' %}selected{% endif %}>
+                                            Mistral (Local, Free)
+                                        </option>
+                                    </optgroup>
                                 </select>
+                                <div class="form-text">
+                                    Choose between OpenAI's cloud models (requires API key) or local Ollama models (free, requires Ollama installation).
+                                </div>
                             </div>
 
                             <div class="mb-4">
@@ -110,7 +133,7 @@
                                 <h6 class="mb-3">Feed Management</h6>
                                 <div class="mb-3">
                                     <div class="input-group">
-                                        <input type="url" class="form-control" id="newFeedUrl" 
+                                        <input type="url" class="form-control" id="feedUrl" 
                                                placeholder="Enter RSS feed URL">
                                         <button class="btn btn-primary" type="button" id="testFeed">
                                             <i class="fas fa-check me-2"></i>Test Feed
@@ -179,15 +202,18 @@
             }
         }
 
+        // Get CSRF token from the meta tag
+        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
         // Feed management
-        const newFeedUrl = document.getElementById('newFeedUrl');
+        const feedUrl = document.getElementById('feedUrl');
         const testFeedBtn = document.getElementById('testFeed');
         const addFeedBtn = document.getElementById('addFeed');
         const feedTestResult = document.getElementById('feedTestResult');
         const feedsList = document.getElementById('feedsList');
 
         testFeedBtn.addEventListener('click', async () => {
-            const url = newFeedUrl.value.trim();
+            const url = feedUrl.value.trim();
             if (!url) {
                 feedTestResult.innerHTML = '<span class="text-danger">Please enter a feed URL</span>';
                 addFeedBtn.disabled = true;
@@ -202,6 +228,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({ url })
                 });
@@ -222,7 +249,7 @@
         });
 
         addFeedBtn.addEventListener('click', async () => {
-            const url = newFeedUrl.value.trim();
+            const url = feedUrl.value.trim();
             if (!url) return;
 
             try {
@@ -230,6 +257,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({ url })
                 });
@@ -254,8 +282,8 @@
                     `;
                     feedsList.appendChild(feedItem);
                     
-                    // Clear input
-                    newFeedUrl.value = '';
+                    // Clear input and reset state
+                    feedUrl.value = '';
                     feedTestResult.innerHTML = '';
                     addFeedBtn.disabled = true;
                 } else {
@@ -278,6 +306,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
                         },
                         body: JSON.stringify({ feed_id: feedId })
                     });
@@ -332,8 +361,13 @@ Rationale: [your rationale]`;
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
                     },
-                    body: JSON.stringify(formData)
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        ...formData,
+                        csrf_token: csrfToken
+                    })
                 });
 
                 const data = await response.json();

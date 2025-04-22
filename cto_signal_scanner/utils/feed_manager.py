@@ -20,10 +20,12 @@ class FeedManager:
 
     def __init__(self, feeds_file: str = "feeds.json"):
         self.feeds_file = Path(feeds_file)
-        self.feeds: Dict = self._load_feeds()
+        self.custom_feeds_file = self.feeds_file.parent / "custom_feeds.json"
+        self.feeds = self._load_feeds()
+        self.custom_feeds = self._load_custom_feeds()
 
     def _load_feeds(self) -> Dict:
-        """Load feeds from JSON file or create default if not exists."""
+        """Load default feeds from JSON file or create if not exists."""
         if self.feeds_file.exists():
             with open(self.feeds_file, 'r') as f:
                 return json.load(f)
@@ -36,7 +38,8 @@ class FeedManager:
                 'url': url,
                 'name': name.upper(),
                 'added_at': datetime.now().isoformat(),
-                'status': 'unknown'  # Will be validated when first accessed
+                'status': 'unknown',  # Will be validated when first accessed
+                'is_default': True
             }
             feeds['feeds'].append(feed_data)
         
@@ -46,10 +49,22 @@ class FeedManager:
         
         return feeds
 
+    def _load_custom_feeds(self) -> Dict:
+        """Load custom feeds from separate JSON file."""
+        if self.custom_feeds_file.exists():
+            with open(self.custom_feeds_file, 'r') as f:
+                return json.load(f)
+        return {"feeds": []}
+
     def _save_feeds(self):
-        """Save feeds to JSON file."""
+        """Save feeds to appropriate JSON files."""
+        # Save default feeds
         with open(self.feeds_file, 'w') as f:
             json.dump(self.feeds, f, indent=2)
+        
+        # Save custom feeds
+        with open(self.custom_feeds_file, 'w') as f:
+            json.dump(self.custom_feeds, f, indent=2)
 
     def validate_feed(self, url: str) -> Tuple[bool, str]:
         """
@@ -99,8 +114,9 @@ class FeedManager:
         if not is_valid:
             return False, error_msg, None
 
-        # Check if feed already exists
-        if any(feed['url'] == url for feed in self.feeds['feeds']):
+        # Check if feed already exists in either default or custom feeds
+        all_feeds = self.get_feeds()
+        if any(feed['url'] == url for feed in all_feeds):
             return False, "Feed already exists", None
 
         # Create new feed entry
@@ -109,36 +125,43 @@ class FeedManager:
             'url': url,
             'name': self._extract_feed_name(url),
             'added_at': datetime.now().isoformat(),
-            'status': 'valid'
+            'status': 'valid',
+            'is_default': False
         }
 
-        # Add to feeds list
-        self.feeds['feeds'].append(feed_data)
+        # Add to custom feeds list
+        self.custom_feeds['feeds'].append(feed_data)
         self._save_feeds()
 
         return True, "Feed added successfully", feed_data
 
     def remove_feed(self, feed_id: str) -> Tuple[bool, str]:
         """Remove a feed by ID."""
-        original_length = len(self.feeds['feeds'])
-        self.feeds['feeds'] = [f for f in self.feeds['feeds'] if f['id'] != feed_id]
+        # First try to remove from custom feeds
+        original_length = len(self.custom_feeds['feeds'])
+        self.custom_feeds['feeds'] = [f for f in self.custom_feeds['feeds'] if f['id'] != feed_id]
         
-        if len(self.feeds['feeds']) == original_length:
-            return False, "Feed not found"
+        if len(self.custom_feeds['feeds']) != original_length:
+            self._save_feeds()
+            return True, "Feed removed successfully"
         
-        self._save_feeds()
-        return True, "Feed removed successfully"
+        # If not found in custom feeds, check if it's a default feed
+        default_feed = next((f for f in self.feeds['feeds'] if f['id'] == feed_id), None)
+        if default_feed:
+            return False, "Cannot remove default feed"
+        
+        return False, "Feed not found"
 
     def get_feeds(self) -> List[Dict]:
-        """Get all feeds with their current status."""
-        feeds = self.feeds['feeds'].copy()
+        """Get all feeds (both default and custom) with their current status."""
+        all_feeds = self.feeds['feeds'].copy() + self.custom_feeds['feeds'].copy()
         
         # Update status for each feed
-        for feed in feeds:
+        for feed in all_feeds:
             is_valid, _ = self.validate_feed(feed['url'])
             feed['status'] = 'valid' if is_valid else 'invalid'
         
-        return feeds
+        return all_feeds
 
     def _extract_feed_name(self, url: str) -> str:
         """Extract a readable name from the feed URL."""

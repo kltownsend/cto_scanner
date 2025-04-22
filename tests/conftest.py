@@ -15,7 +15,7 @@ def mock_openai_response():
     mock_response.choices = [
         MagicMock(
             message={
-                'content': 'Score: 8/10\nReason: Important enterprise tech update\nTweet 1: Test tweet\nTweet 2: Another test tweet'
+                'content': 'Summary: Important enterprise tech update\nRating: High\nRationale: Test rationale'
             }
         )
     ]

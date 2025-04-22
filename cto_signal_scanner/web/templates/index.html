@@ -65,7 +65,11 @@
                 <div id="scanProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
                      role="progressbar" style="width: 0%"></div>
             </div>
-            <p id="scanStatus" class="mt-2 text-muted">Starting scan...</p>
+            <div class="mt-2">
+                <p id="scanStatus" class="text-muted mb-1">Starting scan...</p>
+                <p id="articleCount" class="text-muted mb-1">Articles found: 0</p>
+                <p id="assessmentProgress" class="text-muted">Assessing articles: 0/0</p>
+            </div>
         </div>
     </div>
 
@@ -185,94 +189,118 @@
         let originalResults = [];
         let currentPdfPath = null;
         
+        let totalArticles = 0;
+        let assessedArticles = 0;
+        let progressInterval;
+        let progress = 0;
+        let eventSource = null;
+
+        function updateProgress() {
+            const progressBar = document.getElementById('scanProgress');
+            const progressText = document.getElementById('scanStatus');
+            const articleCount = document.getElementById('articleCount');
+            const assessmentProgress = document.getElementById('assessmentProgress');
+
+            if (totalArticles > 0) {
+                const articleProgress = (assessedArticles / totalArticles) * 100;
+                progress = Math.min(90, articleProgress);
+            } else {
+                progress = Math.min(90, progress + 1);
+            }
+
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `${Math.round(progress)}%`;
+            articleCount.textContent = `Found ${totalArticles} articles`;
+            assessmentProgress.textContent = `Assessed ${assessedArticles} articles`;
+        }
+
+        function startProgressUpdates() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource('/scan_progress');
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.is_scanning) {
+                    totalArticles = data.total_articles;
+                    assessedArticles = data.assessed_articles;
+                    updateProgress();
+                } else {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            };
+            
+            eventSource.onerror = function() {
+                eventSource.close();
+                eventSource = null;
+            };
+        }
+
         document.getElementById('scanForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const daysBack = document.getElementById('daysBack').value;
-            const loading = document.querySelector('.loading');
-            const results = document.getElementById('results');
-            const resultsContent = document.getElementById('resultsContent');
-            const noResultsMessage = document.getElementById('noResultsMessage');
-            const noResultsText = document.getElementById('noResultsText');
-            const articlesList = document.getElementById('articlesList');
-            const progressBar = document.getElementById('scanProgress');
-            const scanStatus = document.getElementById('scanStatus');
-            const downloadPdfBtn = document.getElementById('downloadPdf');
             
-            loading.style.display = 'block';
-            results.style.display = 'none';
-            resultsContent.style.display = 'none';
-            noResultsMessage.style.display = 'none';
-            articlesList.innerHTML = '';
-            progressBar.style.width = '0%';
-            scanStatus.textContent = 'Starting scan...';
-            downloadPdfBtn.disabled = true;
-            currentPdfPath = null;
-
+            const daysBack = document.getElementById('daysBack').value;
+            const resultsDiv = document.getElementById('results');
+            const errorDiv = document.getElementById('noResultsMessage');
+            const progressDiv = document.getElementById('scanProgress');
+            const loadingDiv = document.querySelector('.loading');
+            
+            // Reset progress
+            totalArticles = 0;
+            assessedArticles = 0;
+            progress = 0;
+            progressDiv.style.display = 'block';
+            resultsDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            loadingDiv.style.display = 'block';
+            
+            // Start progress updates
+            startProgressUpdates();
+            
             try {
-                // Simulate progress updates
-                let progress = 0;
-                const progressInterval = setInterval(() => {
-                    progress += 5;
-                    if (progress <= 90) {
-                        progressBar.style.width = `${progress}%`;
-                        scanStatus.textContent = `Scanning feeds... ${progress}%`;
-                    }
-                }, 1000);
-
                 const response = await fetch('/scan', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
                     },
-                    body: `days_back=${daysBack}`
+                    body: JSON.stringify({ days_back: parseInt(daysBack) })
                 });
 
-                clearInterval(progressInterval);
-                progressBar.style.width = '100%';
-                scanStatus.textContent = 'Scan complete!';
+                loadingDiv.style.display = 'none';
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
                 const data = await response.json();
                 
-                // Show results section
-                results.style.display = 'block';
-                
-                if (!data.success) {
-                    // Handle error case
-                    noResultsText.textContent = data.error || 'No results found.';
-                    noResultsMessage.style.display = 'block';
-                    resultsContent.style.display = 'none';
-                    return;
+                if (data.success) {
+                    // Store original results for filtering
+                    originalResults = data.results;
+                    
+                    // Store PDF path for download
+                    currentPdfPath = data.pdf_path;
+                    document.getElementById('downloadPdf').disabled = false;
+                    
+                    // Display results
+                    displayResults(data.results);
+                    resultsDiv.style.display = 'block';
+                    document.getElementById('resultsContent').style.display = 'block';
+                } else {
+                    throw new Error(data.error || 'Unknown error occurred');
                 }
-                
-                // Store original results
-                originalResults = data.results;
-                
-                // Store PDF path for download
-                currentPdfPath = data.pdf_path;
-                downloadPdfBtn.disabled = false;
-                
-                // Set up download button
-                downloadPdfBtn.onclick = () => {
-                    if (currentPdfPath) {
-                        window.location.href = `/download/${currentPdfPath.split('/').pop()}`;
-                    }
-                };
-                
-                // Display results
-                displayResults(originalResults);
-                
-                // Show results content
-                resultsContent.style.display = 'block';
             } catch (error) {
-                // Show error message
-                results.style.display = 'block';
-                noResultsText.textContent = `Error: ${error.message}`;
-                noResultsMessage.style.display = 'block';
-                resultsContent.style.display = 'none';
-            } finally {
-                setTimeout(() => {
-                    loading.style.display = 'none';
-                }, 1000);
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+                loadingDiv.style.display = 'none';
+                errorDiv.textContent = `Error: ${error.message}`;
+                errorDiv.style.display = 'block';
             }
         });
         

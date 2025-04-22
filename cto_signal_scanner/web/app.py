@@ -1,28 +1,57 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, session, Response
 import os
 import json
+import logging
 import feedparser
 from pathlib import Path
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_talisman import Talisman
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_session import Session
 from cto_signal_scanner.utils.feed_manager import FeedManager
 from cto_signal_scanner.utils.gpt_agent import GPTAgent
 from cto_signal_scanner.utils.pdf_generator import ReportGenerator
+from cto_signal_scanner.main import fetch_and_process_feeds
+import time
 
 # Load environment variables
 load_dotenv()
+
+# Default port configuration
+PORT = int(os.getenv('PORT', 5001))  # Use 5001 as the default port
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('cto_signal_scanner.log'),
+        logging.StreamHandler()
+    ]
+)
+
+# Create logger instances
+app_logger = logging.getLogger('app')
+feed_logger = logging.getLogger('feed_manager')
 
 # Determine base directory
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.urandom(24)
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-please-change-in-production')
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = str(BASE_DIR / 'flask_session')
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 app.config['REPORTS_FOLDER'] = BASE_DIR / 'reports'
 app.config['SETTINGS_FILE'] = BASE_DIR / 'settings.json'
+app.config['PORT'] = PORT  # Set the port in Flask config
+
+# Initialize session
+Session(app)
 
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
@@ -53,6 +82,13 @@ os.makedirs(app.config['REPORTS_FOLDER'], mode=0o700, exist_ok=True)
 # Initialize managers
 feed_manager = FeedManager(str(BASE_DIR / 'feeds.json'))
 gpt_agent = GPTAgent()
+
+# Global variables for progress tracking
+scan_progress = {
+    'total_articles': 0,
+    'assessed_articles': 0,
+    'is_scanning': False
+}
 
 def load_settings():
     """Load settings from JSON file or return defaults"""
@@ -90,6 +126,17 @@ def save_settings(settings):
     os.environ['OPENAI_API_KEY'] = settings.get('openai_key', '')
     os.environ['GPT_MODEL'] = settings.get('gpt_model', 'gpt-3.5-turbo')
     os.environ['GPT_PROMPT'] = settings.get('gpt_prompt', '')
+    
+    # Configure Ollama if a local model is selected
+    if settings.get('gpt_model') in ['qwen2:7b', 'llama2', 'mistral']:
+        os.environ['USE_OLLAMA'] = 'true'
+        os.environ['OLLAMA_MODEL'] = settings.get('gpt_model')
+    else:
+        os.environ['USE_OLLAMA'] = 'false'
+    
+    # Reinitialize GPT agent with new settings
+    global gpt_agent
+    gpt_agent = GPTAgent()
 
 @app.route('/')
 def index():
@@ -171,111 +218,89 @@ def remove_feed():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/scan_progress')
+def scan_progress_stream():
+    def generate():
+        while True:
+            if scan_progress['is_scanning']:
+                yield f"data: {json.dumps(scan_progress)}\n\n"
+            else:
+                yield "data: {\"is_scanning\": false}\n\n"
+            time.sleep(1)
+    
+    return Response(generate(), mimetype='text/event-stream')
+
 @app.route('/scan', methods=['POST'])
-@limiter.limit("10 per minute")  # Limit scan requests
-def scan_feeds():
+def scan():
     try:
-        days_back = int(request.form.get('days_back', 7))
-        if not 1 <= days_back <= 30:
-            return jsonify({'error': 'Days must be between 1 and 30'}), 400
-
-        cutoff_date = datetime.now() - timedelta(days=days_back)
-        results = []
-        pdf_gen = ReportGenerator()
-        pdf_gen.add_header(days_back)
-        
-        # Get enabled feeds from feed manager
-        enabled_feeds = feed_manager.get_enabled_feeds()
-        
-        if not enabled_feeds:
+        if not request.is_json:
+            app_logger.warning("Invalid content type received in scan request")
             return jsonify({
                 'success': False,
-                'error': 'No valid feed sources available. Please add and enable feeds in settings.',
-                'results': []
-            })
-        
-        feed_count = 0
-        for url in enabled_feeds:
-            feed = feedparser.parse(url)
-            if not feed.entries:
-                continue
-            
-            feed_count += 1
-            for entry in feed.entries:
-                # Try to get the entry date
-                date_fields = ['published', 'updated', 'created']
-                entry_date = None
-                for field in date_fields:
-                    if hasattr(entry, field):
-                        try:
-                            entry_date = datetime.strptime(getattr(entry, field), '%a, %d %b %Y %H:%M:%S %z')
-                            break
-                        except (ValueError, TypeError):
-                            continue
-                
-                if not entry_date or entry_date < cutoff_date:
-                    continue
+                'error': 'Invalid content type. Expected application/json'
+            }), 400
 
-                try:
-                    result = gpt_agent.evaluate_post(entry.title, entry.summary, entry.link)
-                    
-                    # Parse the GPT response
-                    lines = result.strip().split('\n')
-                    summary = ""
-                    rating = ""
-                    rationale = ""
-                    
-                    for line in lines:
-                        if line.startswith('Summary:'):
-                            summary = line.replace('Summary:', '').strip()
-                        elif line.startswith('Rating:'):
-                            rating = line.replace('Rating:', '').strip()
-                        elif line.startswith('Rationale:'):
-                            rationale = line.replace('Rationale:', '').strip()
-
-                    article_data = {
-                        'title': entry.title,
-                        'link': entry.link,
-                        'summary': summary,
-                        'rating': rating,
-                        'rationale': rationale,
-                        'date': entry_date.isoformat()
-                    }
-                    
-                    results.append(article_data)
-                    pdf_gen.add_article(**article_data)
-
-                except Exception as e:
-                    app.logger.error(f"Error evaluating post: {str(e)}")
-
-        # Check if any feeds were processed
-        if feed_count == 0:
+        data = request.get_json()
+        if not data or 'days_back' not in data:
+            app_logger.warning("Missing days_back parameter in scan request")
             return jsonify({
                 'success': False,
-                'error': 'No feeds could be processed. Please check your feed URLs in settings.',
-                'results': []
-            })
-        
-        # Check if any results were found
-        if not results:
+                'error': 'Missing required parameter: days_back'
+            }), 400
+
+        days_back = data['days_back']
+        if not isinstance(days_back, int) or days_back < 1 or days_back > 30:
+            app_logger.warning(f"Invalid days_back value received: {days_back}")
             return jsonify({
                 'success': False,
-                'error': f'No new articles found in the last {days_back} days.',
-                'results': []
-            })
+                'error': 'days_back must be an integer between 1 and 30'
+            }), 400
 
-        # Generate PDF report
-        pdf_path = pdf_gen.generate()
+        app_logger.info(f"Starting scan for {days_back} days back")
+        
+        # Reset progress
+        scan_progress['total_articles'] = 0
+        scan_progress['assessed_articles'] = 0
+        scan_progress['is_scanning'] = True
+        
+        # Fetch results
+        results, pdf_path = fetch_and_process_feeds(days_back)
+        app_logger.info(f"Scan completed. Found {len(results)} articles")
+        
+        # Create PDF report
+        pdf_generator = ReportGenerator()
+        pdf_generator.add_header(f"CTO Signal Scanner Report - Last {days_back} Days")
+        
+        # Add articles to PDF
+        for article in results:
+            pdf_generator.add_article(
+                title=article['title'],
+                link=article['link'],
+                summary=article['summary'],
+                rating=article['rating'],
+                rationale=article['rationale']
+            )
+        
+        # Update final progress
+        scan_progress['total_articles'] = len(results)
+        scan_progress['assessed_articles'] = len(results)
+        scan_progress['is_scanning'] = False
         
         return jsonify({
             'success': True,
             'results': results,
-            'pdf_path': str(pdf_path)
+            'pdf_path': pdf_path,
+            'article_count': len(results),
+            'assessed_count': len(results)
         })
 
     except Exception as e:
-        app.logger.error(f"Error in scan_feeds: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Error during scan: {str(e)}", exc_info=True)
+        scan_progress['is_scanning'] = False
+        return jsonify({
+            'success': False,
+            'error': f'An error occurred during the scan: {str(e)}'
+        }), 500
 
 @app.route('/download/<path:filename>')
 @limiter.limit("30 per minute")  # Limit download requests
@@ -304,8 +329,20 @@ def download_file(filename):
             download_name=filename
         )
     except Exception as e:
-        app.logger.error(f"Error downloading file: {str(e)}")
+        app_logger.error(f"Error downloading file: {str(e)}")
         return jsonify({'error': 'An error occurred while downloading the file'}), 500
 
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    return jsonify({
+        'success': False,
+        'error': 'Session expired. Please refresh the page and try again.'
+    }), 400
+
+@app.before_request
+def before_request():
+    session.permanent = True
+    session.modified = True
+
 if __name__ == '__main__':
-    app.run(debug=True) 
+    app.run(debug=True, port=PORT) 

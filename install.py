@@ -4,7 +4,9 @@ import sys
 import subprocess
 import platform
 import venv
+import shutil
 from pathlib import Path
+import socket
 
 def check_python_version():
     """Check if Python version is 3.8 or higher."""
@@ -47,23 +49,46 @@ def install_dependencies():
         print(f"Error: Failed to install dependencies: {e}")
         sys.exit(1)
 
-def create_env_file():
-    """Create .env file if it doesn't exist."""
-    env_path = Path(".env")
-    if not env_path.exists():
-        print("Creating .env file...")
-        with open(env_path, "w") as f:
-            f.write("OPENAI_API_KEY=your-api-key-here\n")
-            f.write("GPT_MODEL=gpt-3.5-turbo\n")
-            
-            # Set port based on OS
-            if platform.system() == "Darwin":  # macOS
-                f.write("PORT=5001\n")
-                print("Using port 5001 for macOS to avoid AirPlay conflicts")
-            else:
-                f.write("PORT=5000\n")
-                
-        print("Please edit .env file and add your OpenAI API key.")
+def configure_port():
+    """Configure the port based on the operating system and availability"""
+    # Define the range of ports to try
+    preferred_ports = [8000, 8080, 3000, 5000, 5001]
+    
+    print("Checking for available ports...")
+    for port in preferred_ports:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(('localhost', port))
+                print(f"Port {port} is available")
+                return port
+            except socket.error:
+                print(f"Port {port} is in use, trying next port...")
+                continue
+    
+    # If no preferred ports are available, try a range
+    for port in range(8081, 8100):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(('localhost', port))
+                print(f"Found available port: {port}")
+                return port
+            except socket.error:
+                continue
+    
+    print("Warning: Could not find any common ports, using 8000")
+    return 8000  # Final fallback
+
+def update_env_file():
+    """Update or create .env file with configuration"""
+    port = configure_port()
+    env_content = f"""OPENAI_API_KEY=your-api-key-here
+GPT_MODEL=gpt-3.5-turbo
+PORT={port}
+DEFAULT_PORT=8000
+"""
+    with open('.env', 'w') as f:
+        f.write(env_content)
+    print(f"Configuration file created with port {port}")
 
 def create_reports_directory():
     """Create reports directory if it doesn't exist."""
@@ -86,7 +111,7 @@ def main():
     activate_cmd = get_activate_script()
     
     # Create necessary files and directories
-    create_env_file()
+    update_env_file()
     create_reports_directory()
     
     # Install dependencies
@@ -94,13 +119,15 @@ def main():
     
     print("\nInstallation complete! 🎉")
     print("\nTo start using the application:")
-    print(f"1. Activate the virtual environment: {activate_cmd}")
-    print("2. Edit the .env file and add your OpenAI API key")
-    print("3. Start the application: python run_web.py")
-    if platform.system() == "Darwin":  # macOS
-        print("4. Open your browser and go to: http://localhost:5001")
+    print("1. Activate the virtual environment:")
+    if platform.system() == "Windows":
+        print("   venv\\Scripts\\activate")
     else:
-        print("4. Open your browser and go to: http://localhost:5000")
+        print("   source venv/bin/activate")
+    print("\n2. Edit the .env file and add your OpenAI API key")
+    print("\n3. Start the application:")
+    print("   python run_web.py")
+    print(f"\n4. Open your browser and go to: http://localhost:${{PORT}} (check .env file for port number)")
     print("\nFor more detailed instructions, please refer to the README.md file.")
 
 if __name__ == "__main__":

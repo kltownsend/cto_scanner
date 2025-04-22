@@ -106,7 +106,7 @@ class ReportGenerator:
         self.story.append(Spacer(1, 10))
         
         # Add rating and rationale
-        self.story.append(Paragraph(f"Rating: {rating}/10", self.styles['Rating']))
+        self.story.append(Paragraph(f"Rating: {rating}", self.styles['Rating']))
         self.story.append(Paragraph(f"Rationale: {rationale}", self.styles['Normal']))
         self.story.append(Spacer(1, 20))
 

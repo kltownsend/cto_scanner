@@ -94,105 +94,120 @@ def fetch_and_validate_feed(url):
         logger.error(f"Error fetching feed {url}: {str(e)}")
         return None
 
-def fetch_and_process_feeds():
-    # Get user input for days to look back
-    while True:
-        try:
-            days_back = int(input("Enter number of days to look back (1-30): "))
-            if 1 <= days_back <= 30:
-                break
-            print("Please enter a number between 1 and 30.")
-        except ValueError:
-            print("Please enter a valid number.")
-    
+def load_gpt_cache():
+    """Load the GPT response cache."""
+    cache_file = BASE_DIR / "gpt_cache.json"
+    if cache_file.exists():
+        with open(cache_file, 'r') as f:
+            return json.load(f)
+    return {'prompt': '', 'responses': {}}
+
+def save_gpt_cache(cache):
+    """Save the GPT response cache."""
+    cache_file = BASE_DIR / "gpt_cache.json"
+    with open(cache_file, 'w') as f:
+        json.dump(cache, f)
+
+def fetch_and_process_feeds(days_back=7):
+    """Fetch and process feeds for the specified number of days back."""
     cutoff_date = datetime.now() - timedelta(days=days_back)
-    print(f"\nLooking for posts since: {cutoff_date.strftime('%Y-%m-%d')}")
+    logger.info(f"Looking for posts since: {cutoff_date.strftime('%Y-%m-%d')}")
     
     # Initialize PDF generator and GPT agent
     pdf_gen = ReportGenerator()
     gpt_agent = GPTAgent()
     pdf_gen.add_header(days_back)
     
-    # Clear and initialize new cache
-    processed_cache = clear_cache()
+    # Load GPT cache
+    gpt_cache = load_gpt_cache()
+    current_prompt = gpt_agent.get_current_prompt()
     
-    logger.debug("Starting feed processing")
+    # Check if we need to invalidate cache
+    if gpt_cache['prompt'] != current_prompt:
+        logger.info("Prompt changed, invalidating GPT cache")
+        gpt_cache = {'prompt': current_prompt, 'responses': {}}
+    
+    # Initialize empty results list
+    results = []
+    
+    logger.info("Starting feed processing")
     try:
         for url in FEEDS:
-            logger.debug(f"Processing feed: {url}")
+            logger.info(f"Processing feed: {url}")
             try:
                 feed = fetch_and_validate_feed(url)
                 if not feed:
+                    logger.warning(f"Could not fetch or parse feed: {url}")
                     continue
                     
-                logger.debug(f"Feed parsed, found {len(feed.entries)} entries")
+                logger.info(f"Feed parsed, found {len(feed.entries)} entries")
                 
                 for entry in feed.entries:
-                    entry_date = parse_date(entry)
-                    if not entry_date:
-                        logger.warning(f"Could not parse date for entry: {entry.title}")
-                        continue
-                        
-                    # Skip if entry is too old
-                    if entry_date < cutoff_date:
-                        continue
-                        
-                    # Skip if already processed
-                    entry_id = entry.get('id', entry.link)
-                    if entry_id in processed_cache:
-                        continue
-                    
-                    logger.debug(f"Processing entry: {entry.title}")
                     try:
-                        result = gpt_agent.evaluate_post(entry.title, entry.summary, entry.link)
+                        entry_date = parse_date(entry)
+                        if not entry_date:
+                            logger.warning(f"Could not parse date for entry: {entry.title}")
+                            continue
+                            
+                        # Skip if entry is too old
+                        if entry_date < cutoff_date:
+                            continue
                         
-                        # Parse the GPT response
-                        lines = result.strip().split('\n')
-                        link = entry.link
-                        summary = ""
-                        rating = ""
-                        rationale = ""
-                        
-                        for line in lines:
-                            if line.startswith('Summary:'):
-                                summary = line.replace('Summary:', '').strip()
-                            elif line.startswith('Rating:'):
-                                rating = line.replace('Rating:', '').strip()
-                            elif line.startswith('Rationale:'):
-                                rationale = line.replace('Rationale:', '').strip()
-                        
-                        # Add to PDF
-                        pdf_gen.add_article(
-                            title=entry.title,
-                            link=link,
-                            summary=summary,
-                            rating=rating,
-                            rationale=rationale
-                        )
-                        
-                        # Console output for monitoring
-                        print("\nEvaluation Result:")
-                        print("=" * 50)
-                        print(result)
-                        print("=" * 50)
-                        
-                        # Add to processed cache
-                        processed_cache[entry_id] = {
-                            'title': entry.title,
-                            'date': entry_date.isoformat(),
-                            'processed_at': datetime.now().isoformat()
-                        }
+                        logger.info(f"Processing entry: {entry.title}")
+                        try:
+                            # Create cache key from article content
+                            cache_key = f"{entry.title}:{entry.summary}:{entry.link}"
+                            
+                            # Check cache first
+                            if cache_key in gpt_cache['responses']:
+                                logger.info(f"Using cached GPT response for: {entry.title}")
+                                result = gpt_cache['responses'][cache_key]
+                            else:
+                                # Get new evaluation from GPT
+                                result = gpt_agent.evaluate_post(entry.title, entry.summary, entry.link)
+                                # Cache the response
+                                gpt_cache['responses'][cache_key] = result
+                            
+                            # Add to results
+                            results.append({
+                                'title': entry.title,
+                                'link': entry.link,
+                                'summary': result['summary'],
+                                'rating': result['rating'],
+                                'rationale': result['rationale'],
+                                'date': entry_date.isoformat()
+                            })
+                            
+                            # Add to PDF
+                            pdf_gen.add_article(
+                                title=entry.title,
+                                link=entry.link,
+                                summary=result['summary'],
+                                rating=result['rating'],
+                                rationale=result['rationale']
+                            )
+                        except Exception as e:
+                            logger.error(f"Error evaluating post: {str(e)}", exc_info=True)
+                            continue
                     except Exception as e:
-                        logger.error(f"Error evaluating post: {str(e)}", exc_info=True)
+                        logger.error(f"Error processing entry: {str(e)}", exc_info=True)
+                        continue
             except Exception as e:
                 logger.error(f"Error processing feed {url}: {str(e)}", exc_info=True)
+                continue
     except Exception as e:
         logger.error(f"Main process error: {str(e)}", exc_info=True)
+        raise  # Re-raise the exception to be caught by the web app
     finally:
-        # Generate PDF
-        pdf_gen.generate()
-        # Save cache
-        save_cache(processed_cache)
+        try:
+            # Save GPT cache
+            save_gpt_cache(gpt_cache)
+            # Generate PDF
+            pdf_path = pdf_gen.generate()
+            return results, pdf_path
+        except Exception as e:
+            logger.error(f"Error in final steps: {str(e)}", exc_info=True)
+            raise  # Re-raise the exception to be caught by the web app
 
 if __name__ == "__main__":
     fetch_and_process_feeds()

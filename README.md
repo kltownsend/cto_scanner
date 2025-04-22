@@ -4,6 +4,11 @@ An intelligent RSS feed scanner that monitors major tech companies' blogs, evalu
 
 ## Features
 
+- **Advanced Feed Management:**
+  - Default feeds from major tech companies (AWS, Azure, GCP, etc.)
+  - Custom feed support with separate storage
+  - Feed validation and health monitoring
+  - Protected default feeds with flexible custom feed management
 - **Automated Feed Monitoring:** Scans RSS feeds from:
   - AWS
   - Microsoft Azure
@@ -11,6 +16,7 @@ An intelligent RSS feed scanner that monitors major tech companies' blogs, evalu
   - Cloudflare
   - Cisco
   - Red Hat
+  - Custom sources (add your own RSS feeds)
 - **Smart Content Evaluation:** Uses GPT to analyze and rate content relevance
 - **Date-Based Filtering:** Customizable date range for content scanning (1-30 days)
 - **Cache Management:** Prevents duplicate processing within each run
@@ -126,14 +132,29 @@ If you prefer to install manually:
 3. **Configure Settings**
    - Access settings through the gear icon
    - Update API keys
-   - Manage feed sources
+   - Manage feed sources:
+     - View default feeds (protected from removal)
+     - Add custom RSS feeds
+     - Remove custom feeds
+     - Monitor feed health status
    - Configure GPT model and prompts
+
+4. **Managing Feeds**
+   - Default feeds are protected and automatically maintained
+   - Custom feeds can be added using any valid RSS feed URL
+   - Custom feeds are stored separately and preserved during updates
+   - All feeds are automatically validated and monitored for health
+   - Invalid feeds are clearly marked in the interface
 
 ## Troubleshooting
 
 - **Port Conflicts:** If port 5001 is in use, change the `PORT` value in your `.env` file
 - **API Key Issues:** Ensure your OpenAI API key is valid and has sufficient credits
-- **Feed Parsing Errors:** Check feed URLs in settings if articles aren't being processed
+- **Feed Issues:**
+  - Default feeds cannot be removed but will be automatically updated
+  - Custom feeds can be removed if they're no longer needed
+  - Invalid feed URLs will be marked as such in the interface
+  - Check feed URLs in settings if articles aren't being processed
 - **Session Issues:** Clear browser cookies if experiencing session-related problems
 
 ## Contributing

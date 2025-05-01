@@ -128,9 +128,9 @@
                                         <label for="filterRating" class="form-label">Filter by Rating</label>
                                         <select id="filterRating" class="form-select">
                                             <option value="all">All Ratings</option>
-                                            <option value="High">High</option>
-                                            <option value="Medium">Medium</option>
-                                            <option value="Low">Low</option>
+                                            <option value="8">High (8-10)</option>
+                                            <option value="5">Medium (5-7)</option>
+                                            <option value="1">Low (1-4)</option>
                                         </select>
                                     </div>
                                     <div class="col-md-6">
@@ -334,7 +334,12 @@
             // Filter results
             let filteredResults = [...originalResults];
             if (ratingFilter !== 'all') {
-                filteredResults = filteredResults.filter(article => article.rating === ratingFilter);
+                const minRating = parseInt(ratingFilter);
+                const maxRating = minRating === 8 ? 10 : minRating === 5 ? 7 : 4;
+                filteredResults = filteredResults.filter(article => {
+                    const rating = parseInt(article.rating);
+                    return rating >= minRating && rating <= maxRating;
+                });
             }
             
             // Sort results
@@ -346,9 +351,7 @@
                     filteredResults.sort((a, b) => new Date(a.date) - new Date(b.date));
                     break;
                 case 'rating':
-                    // Sort by rating (High, Medium, Low)
-                    const ratingOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
-                    filteredResults.sort((a, b) => ratingOrder[b.rating] - ratingOrder[a.rating]);
+                    filteredResults.sort((a, b) => parseInt(b.rating) - parseInt(a.rating));
                     break;
             }
             

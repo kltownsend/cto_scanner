@@ -43,6 +43,12 @@ All notable changes to the CTO Signal Scanner project will be documented in this
 - Updated frontend to show real-time progress during scans
 - Enhanced progress bar to reflect actual article processing
 - Improved error message display in the UI
+- Updated rating system from High/Medium/Low to a numerical scale (1-10)
+  - 1-3: Low relevance
+  - 4-6: Medium relevance
+  - 7-10: High relevance
+- Updated OpenAI package to version 0.28.1 for better stability
+- Simplified README with clearer installation and usage instructions
 
 ### Fixed
 - Feed management issues with default feed protection
@@ -59,6 +65,8 @@ All notable changes to the CTO Signal Scanner project will be documented in this
 - Fixed dictionary response handling in main processing loop
 - Fixed progress bar hanging at 90% issue
 - Resolved duplicate run_web.py file conflict
+- Fixed OpenAI API compatibility issues
+- Improved error handling for API responses
 
 ## [1.0.0] - 2024-03-20
 

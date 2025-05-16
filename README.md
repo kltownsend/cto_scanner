@@ -1,165 +1,93 @@
 # CTO Signal Scanner
 
-An intelligent RSS feed scanner that monitors major tech companies' blogs, evaluates content relevance for enterprise technology leaders, and provides concise summaries with ratings.
+A tool for scanning and analyzing technology blog posts to identify relevant content for CTOs and technology leaders.
 
 ## Features
 
-- **Advanced Feed Management:**
-  - Default feeds from major tech companies (AWS, Azure, GCP, etc.)
-  - Custom feed support with separate storage
-  - Feed validation and health monitoring
-  - Protected default feeds with flexible custom feed management
-- **Automated Feed Monitoring:** Scans RSS feeds from:
-  - AWS
-  - Microsoft Azure
-  - Google Cloud
-  - Cloudflare
-  - Cisco
-  - Red Hat
-  - Custom sources (add your own RSS feeds)
-- **Smart Content Evaluation:** Uses GPT to analyze and rate content relevance
-- **Date-Based Filtering:** Customizable date range for content scanning (1-30 days)
-- **Cache Management:** Prevents duplicate processing within each run
-- **Robust Feed Parsing:** Handles various RSS/Atom formats with fallback mechanisms
-- **PDF Report Generation:** Creates detailed PDF reports of all processed articles
-- **Web Interface:** User-friendly web UI for scanning and viewing results
-- **Dark Mode Support:** Toggle between light and dark themes
-- **Mobile Responsive:** Works well on all device sizes
-- **Enhanced Security:** CSRF protection and secure session management
-- **Results Management:** Filter and sort articles by rating and date
-- **Settings Management:** Configure API keys and feed sources through web interface
-- **GPT Response Caching:** Improves performance and handles rate limits
-- **Real-time Progress Updates:** Shows article processing progress during scans
-- **Detailed Error Handling:** Clear error messages and proper error recovery
-- **Configurable Port:** Set through environment variables (default: 5001)
+- Scans multiple technology blogs and news sources
+- Uses AI to analyze and rate content relevance
+- Generates PDF reports with summaries and ratings
+- Web interface for viewing and managing scans
+- Configurable rating system (1-10 scale)
+- Support for both OpenAI and local Ollama models
 
-## Installation Guide
+## Rating System
 
-### Prerequisites
+Articles are rated on a scale of 1-10 based on their relevance to CTOs and technology leaders:
+- 1-3: Low relevance
+- 4-6: Medium relevance
+- 7-10: High relevance
 
-- Python 3.8 or higher
-- OpenAI API key (get one from [OpenAI's website](https://platform.openai.com/api-keys))
+## Installation
 
-### Quick Installation
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/cto_signal_scanner.git
+cd cto_signal_scanner
+```
 
-1. **Install Python Development Tools**
-   - On macOS:
-     ```bash
-     brew install python@3.12
-     ```
-   - On Ubuntu/Debian:
-     ```bash
-     sudo apt-get install python3-venv
-     ```
+2. Create and activate a virtual environment:
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
 
-2. **Download and Install**
-   - Download the latest release from GitHub
-   - Or clone the repository:
-     ```bash
-     git clone https://github.com/kltownsend/cto_scanner.git
-     cd cto_scanner
-     ```
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+pip install -e .
+```
 
-3. **Run Installation Script**
-   - On macOS/Linux:
-     ```bash
-     ./install.sh
-     ```
-   - On Windows:
-     ```bash
-     python install.py
-     ```
-
-   The installation script will:
-   - Create a virtual environment
-   - Install dependencies
-   - Set up configuration files
-   - Configure the appropriate port (5001 for macOS, 5000 for others)
-
-### Manual Installation
-
-If you prefer to install manually:
-
-1. **Set Up Virtual Environment**
-   - Windows:
-     ```bash
-     python -m venv venv
-     venv\Scripts\activate
-     ```
-   - macOS/Linux:
-     ```bash
-     python3 -m venv venv
-     source venv/bin/activate
-     ```
-
-2. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Configure the Application**
-   - Create a `.env` file in the project root
-   - Add your configuration:
-     ```
-     OPENAI_API_KEY=your-api-key-here
-     GPT_MODEL=gpt-4.1  # Default model, can be changed to gpt-3.5-turbo or gpt-4
-     PORT=5001  # Default port, change if needed
-     FLASK_SECRET_KEY=your-secret-key-here  # Optional, will be auto-generated if not provided
-     ```
-
-4. **Run the Application**
-   ```bash
-   python -m cto_signal_scanner.run_web
-   ```
-
-   The application will be available at `http://localhost:5001` by default.
+4. Create a `.env` file with your configuration:
+```env
+OPENAI_API_KEY=your_api_key_here
+GPT_MODEL=gpt-3.5-turbo
+```
 
 ## Usage
 
-1. **Start a Scan**
-   - Open the web interface
-   - Enter the number of days to look back (1-30)
-   - Click "Start Scan"
-   - Monitor progress in real-time
-   - View results when complete
+### Web Interface
 
-2. **View and Filter Results**
-   - Filter articles by rating (High/Medium/Low)
-   - Sort by date or rating
-   - Download PDF report
-   - View article details and links
+1. Start the web server:
+```bash
+python run_web.py
+```
 
-3. **Configure Settings**
-   - Access settings through the gear icon
-   - Update API keys
-   - Manage feed sources:
-     - View default feeds (protected from removal)
-     - Add custom RSS feeds
-     - Remove custom feeds
-     - Monitor feed health status
-   - Configure GPT model and prompts
+2. Open your browser and navigate to `http://localhost:5000`
 
-4. **Managing Feeds**
-   - Default feeds are protected and automatically maintained
-   - Custom feeds can be added using any valid RSS feed URL
-   - Custom feeds are stored separately and preserved during updates
-   - All feeds are automatically validated and monitored for health
-   - Invalid feeds are clearly marked in the interface
+### Command Line
 
-## Troubleshooting
+1. Run a scan:
+```bash
+python run_scan.py
+```
 
-- **Port Conflicts:** If port 5001 is in use, change the `PORT` value in your `.env` file
-- **API Key Issues:** Ensure your OpenAI API key is valid and has sufficient credits
-- **Feed Issues:**
-  - Default feeds cannot be removed but will be automatically updated
-  - Custom feeds can be removed if they're no longer needed
-  - Invalid feed URLs will be marked as such in the interface
-  - Check feed URLs in settings if articles aren't being processed
-- **Session Issues:** Clear browser cookies if experiencing session-related problems
+2. Generate a report:
+```bash
+python run_report.py
+```
+
+## Configuration
+
+### Environment Variables
+
+- `OPENAI_API_KEY`: Your OpenAI API key
+- `GPT_MODEL`: The GPT model to use (default: gpt-3.5-turbo)
+- `USE_OLLAMA`: Set to 'true' to use local Ollama model
+- `OLLAMA_BASE_URL`: URL for Ollama API (default: http://localhost:11434/v1)
+- `OLLAMA_MODEL`: Model to use with Ollama (default: qwen2:7b)
+
+### Blog Sources
+
+Edit `cto_signal_scanner/config/blog_sources.py` to add or modify blog sources.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
 ## License
 

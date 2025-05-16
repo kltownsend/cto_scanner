@@ -1,6 +1,6 @@
 import os
 import logging
-from openai import OpenAI
+import openai
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
@@ -16,25 +16,35 @@ class GPTAgent:
         llm_provider = os.getenv('LLM_PROVIDER', '').lower()
         self.use_ollama = use_ollama_env or llm_provider == 'ollama'
 
-        if self.use_ollama:
-            # Configure Ollama endpoint — defaults to local instance
-            base_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434/v1')
-            # The OpenAI client still needs an api_key, but Ollama ignores it – we use a dummy value
-            self.client = OpenAI(base_url=base_url, api_key=os.getenv('OLLAMA_API_KEY', 'ollama'))
-            self.model = os.getenv('OLLAMA_MODEL', os.getenv('GPT_MODEL', 'qwen2:7b'))
-            gpt_logger.info(f"GPTAgent configured to use local Ollama model: {self.model} at {base_url}")
-        else:
-            api_key = os.getenv('OPENAI_API_KEY')
-            if not api_key:
-                raise ValueError("OpenAI API key not found and USE_OLLAMA not enabled")
+        try:
+            if self.use_ollama:
+                # Configure Ollama endpoint — defaults to local instance
+                base_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434/v1')
+                # Set up OpenAI configuration for Ollama
+                openai.api_base = base_url
+                openai.api_key = os.getenv('OLLAMA_API_KEY', 'ollama')
+                self.model = os.getenv('OLLAMA_MODEL', os.getenv('GPT_MODEL', 'qwen2:7b'))
+                gpt_logger.info(f"GPTAgent configured to use local Ollama model: {self.model} at {base_url}")
+            else:
+                api_key = os.getenv('OPENAI_API_KEY')
+                if not api_key:
+                    raise ValueError("OpenAI API key not found and USE_OLLAMA not enabled")
 
-            # Initialize OpenAI client with minimal configuration
-            self.client = OpenAI(api_key=api_key)
-            self.model = os.getenv('GPT_MODEL', 'gpt-3.5-turbo')
+                # Set up OpenAI configuration
+                openai.api_key = api_key
+                self.model = os.getenv('GPT_MODEL', 'gpt-3.5-turbo')
+                gpt_logger.info(f"GPTAgent configured to use OpenAI model: {self.model}")
+        except Exception as e:
+            gpt_logger.error(f"Failed to initialize GPT client: {str(e)}")
+            raise
+
         self.prompt_template = os.getenv('GPT_PROMPT', '''You are a technology analyst specializing in cloud computing and enterprise technology. 
 Analyze the following article and provide:
 1. A concise summary of the key points
-2. A rating (High/Medium/Low) based on its relevance to CTOs and technology leaders
+2. A numerical rating (1-10) based on its relevance to CTOs and technology leaders, where:
+   - 1-3: Low relevance
+   - 4-6: Medium relevance
+   - 7-10: High relevance
 3. A brief rationale for the rating
 
 Article:
@@ -44,7 +54,7 @@ Link: {link}
 
 Format your response as:
 Summary: [your summary]
-Rating: [High/Medium/Low]
+Rating: [1-10]
 Rationale: [your rationale]''')
         self.logger = logging.getLogger('gpt_agent')
 
@@ -72,7 +82,7 @@ Rationale: [your rationale]''')
             self.logger.debug(f"Prompt: {prompt}")
 
             # Get response from GPT / Ollama
-            response = self.client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "You are a technology analyst specializing in cloud computing and enterprise technology."},
@@ -102,29 +112,18 @@ Rationale: [your rationale]''')
 
                 if line.startswith('Summary:'):
                     current_section = 'summary'
-                    result['summary'] = line.replace('Summary:', '').strip()
+                    result['summary'] = line[8:].strip()
                 elif line.startswith('Rating:'):
                     current_section = 'rating'
-                    result['rating'] = line.replace('Rating:', '').strip()
+                    result['rating'] = line[7:].strip()
                 elif line.startswith('Rationale:'):
                     current_section = 'rationale'
-                    result['rationale'] = line.replace('Rationale:', '').strip()
+                    result['rationale'] = line[10:].strip()
                 elif current_section:
-                    # Append to current section if it's a continuation
                     result[current_section] += ' ' + line
-
-            # Validate the response
-            if not all(result.values()):
-                self.logger.warning(f"Incomplete response for article: {title}")
-                self.logger.warning(f"Response: {gpt_response}")
-                self.logger.warning(f"Parsed result: {result}")
 
             return result
 
         except Exception as e:
-            self.logger.error(f"Error evaluating post '{title}': {str(e)}", exc_info=True)
-            return {
-                'summary': f"Error: {str(e)}",
-                'rating': 'Error',
-                'rationale': 'Failed to analyze article'
-            }
+            self.logger.error(f"Error evaluating post: {str(e)}")
+            raise
